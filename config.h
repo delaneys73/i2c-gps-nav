@@ -7,7 +7,7 @@
 #define GPS_LEAD_FILTER
 
 /* Serial speed of the GPS */
-#define GPS_SERIAL_SPEED 38400
+#define GPS_SERIAL_SPEED 9600
 
 /* GPS protocol 
  * NMEA			- Standard NMEA protocol GGA, GSA and RMC  sentences are needed
@@ -23,7 +23,7 @@
 //#define UBLOX
 //#define MTK_BINARY16
 //#define MTK_BINARY19
-#define INIT_MTK_GPS
+//#define INIT_MTK_GPS
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -33,7 +33,7 @@
 // Ping/Pong type sonar modules such as HC-SR04, SRF-04, DYP-ME007 and many others...
 // PWM output continous sonars such as the MAXBOTIX series (connect pin2(PWM out) of the sonar to PC2
 
-#define SONAR						// USE Sonar
+//#define SONAR						// USE Sonar
 
 //Sonar type uncomment only one at a time
 //#define PINGPONG

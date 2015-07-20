@@ -23,6 +23,26 @@
 
 #define VERSION 22                                                         //Software version for cross checking
 
+#include <Adafruit_NeoPixel.h>
+#ifdef __AVR__
+  #include <avr/power.h>
+#endif
+
+// Which pin on the Arduino is connected to the NeoPixels?
+// On a Trinket or Gemma we suggest changing this to 1
+#define PIN            12
+
+// How many NeoPixels are attached to the Arduino?
+#define NUMPIXELS      12
+
+// When we setup the NeoPixel library, we tell it how many pixels, and which pin to use to send signals.
+// Note that for older NeoPixel strips you might need to change the third parameter--see the strandtest
+// example for more information on possible values.
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+
+int state_r = 0;
+int state_g = 0;
+int state_b = 0;
 
 #include "WireMW.h"
 #include "PIDCtrl.h"
@@ -680,9 +700,10 @@ bool GPS_NMEA_newFrame(char c) {
                   if (string[0] == 'G' && string[1] == 'P' && string[2] == 'G' && string[3] == 'S' && string[4] == 'A') gps_frame = GPGSA_FRAME;
                   if (string[0] == 'G' && string[1] == 'P' && string[2] == 'R' && string[3] == 'M' && string[4] == 'C') gps_frame = GPRMC_FRAME;
                 }
-                
+                  
                 switch (gps_frame)
                 {
+                  
                   //************* GPGGA FRAME parsing
                   case GPGGA_FRAME: 
                     switch (param)
@@ -708,6 +729,9 @@ bool GPS_NMEA_newFrame(char c) {
                       case 9: i2c_dataset.altitude = atoi(string);
                               break;
                      }
+                     state_r = 0;
+                     state_g = 0;
+                     state_b = 255;
                    break;         
                    //************* GPGSA FRAME parsing
                    case GPGSA_FRAME:
@@ -1197,20 +1221,31 @@ void blink_sonar_update()
 
   if(_statusled_timer < now) {
     if(lastframe_time+5000 < now) {
-      // no gps communication  
+      // no gps communication
+      
       _statusled_state = !_statusled_state;
       digitalWrite(13, _statusled_state ? HIGH : LOW);   // set the LED off
+      
+      _statusled_state ? setColour(state_r,state_g,state_b) : setColour(0,0,0);
+      
       _statusled_timer = now + 1000;
       return;
     }
         
     if(_statusled_blinks==0) {
-      if(i2c_dataset.status.gps3dfix == 1)
+      if(i2c_dataset.status.gps3dfix == 1) {
         _statusled_blinks=3;
-      else if(i2c_dataset.status.gps2dfix == 1)
+        state_r = 0;
+        state_g = 255;
+        state_b = 0;
+      } else if(i2c_dataset.status.gps2dfix == 1) {
+        state_r = 0;
+        state_g = 255;
+        state_b = 0;
         _statusled_blinks=2;
-      else
-        _statusled_blinks=1;      
+      } else {
+        _statusled_blinks=1;    
+      }
     }
     
     if(_statusled_state) {
@@ -1218,10 +1253,12 @@ void blink_sonar_update()
       _statusled_state = false;
       _statusled_timer = now + ((_statusled_blinks>0) ? BLINK_INTERVAL : 1000);
       digitalWrite(13, LOW);   // set the LED off
+      setColour(0,0,0);
     } else {
       _statusled_state = true;
       _statusled_timer = now + BLINK_INTERVAL;
       digitalWrite(13, HIGH);   // set the LED on
+      setColour(state_r,state_g,state_b);
     }
   }
 }
@@ -1237,7 +1274,7 @@ void blink_sonar_update()
   uint32_t init_speed[5] = {9600,19200,38400,57600,115200};
 
  #if defined(UBLOX)
-   prog_char UBLOX_INIT[] PROGMEM = {                          // PROGMEM array must be outside any function !!!
+   const char UBLOX_INIT[] PROGMEM = {                          // PROGMEM array must be outside any function !!!
      0xB5,0x62,0x06,0x01,0x03,0x00,0xF0,0x05,0x00,0xFF,0x19,                            //disable all default NMEA messages
      0xB5,0x62,0x06,0x01,0x03,0x00,0xF0,0x03,0x00,0xFD,0x15,
      0xB5,0x62,0x06,0x01,0x03,0x00,0xF0,0x01,0x00,0xFB,0x11,
@@ -1254,10 +1291,9 @@ void blink_sonar_update()
  #endif
 
   void GPS_SerialInit() {
-  
   Serial.begin(GPS_SERIAL_SPEED);  
   delay(1000);
-  
+
 #if defined(UBLOX)
 	//Set speed
       for(uint8_t i=0;i<5;i++){
@@ -1366,6 +1402,8 @@ ISR(PCINT1_vect) {
       }
       Sonar_waiting_echo = 0;
     }
+    
+    
 }
 
 
@@ -1398,7 +1436,12 @@ void Sonar_update()
 // Setup
 //
 void setup() {
-
+  state_r = 255;
+  state_g = 0;
+  state_b = 0;
+  
+  pixels.begin();
+  
   uint8_t i;
 
   //Init Sonar
@@ -1443,6 +1486,15 @@ void setup() {
   Wire.onRequest(requestEvent);          // Set up event handlers
   Wire.onReceive(receiveEvent);
 
+}
+
+void setColour(int r,int g,int b) {
+  for(int i=0;i<NUMPIXELS;i++){
+    // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
+    pixels.setPixelColor(i, pixels.Color(r,g,b)); // Moderately bright green color.
+  }
+  
+  pixels.show(); // This sends the updated pixel color to the hardware.
 }
 
 /******************************************************************************************************************/
