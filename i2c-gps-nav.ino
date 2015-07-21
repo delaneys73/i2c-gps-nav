@@ -23,26 +23,6 @@
 
 #define VERSION 22                                                         //Software version for cross checking
 
-#include <Adafruit_NeoPixel.h>
-#ifdef __AVR__
-  #include <avr/power.h>
-#endif
-
-// Which pin on the Arduino is connected to the NeoPixels?
-// On a Trinket or Gemma we suggest changing this to 1
-#define PIN            12
-
-// How many NeoPixels are attached to the Arduino?
-#define NUMPIXELS      12
-
-// When we setup the NeoPixel library, we tell it how many pixels, and which pin to use to send signals.
-// Note that for older NeoPixel strips you might need to change the third parameter--see the strandtest
-// example for more information on possible values.
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
-
-int state_r = 0;
-int state_g = 0;
-int state_b = 0;
 
 #include "WireMW.h"
 #include "PIDCtrl.h"
@@ -52,6 +32,26 @@ int state_b = 0;
 
 #include "registers.h"                                                    //Register definitions
 #include "config.h"
+
+#ifdef __AVR__
+  #include <avr/power.h>
+#endif
+
+
+#ifdef NEOPIXEL_FEEDBACK
+#include <Adafruit_NeoPixel.h>
+#endif
+
+// Which pin on the Arduino is connected to the NeoPixels?
+// On a Trinket or Gemma we suggest changing this to 1
+#define PIN            12 // MISO - Easy connect on nav board
+
+// How many NeoPixels are attached to the Arduino?
+#define NUMPIXELS      12 // Probably change to 1 later
+
+int state_r = 0;
+int state_g = 0;
+int state_b = 0;
 
 #define REG_MAP_SIZE       sizeof(i2c_dataset)       //size of register map
 #define MAX_SENT_BYTES     0x0C                      //maximum amount of data that I could receive from a master device (register, plus 11 byte waypoint data)
@@ -291,6 +291,9 @@ static uint32_t _statusled_timer = 0;
 static int8_t _statusled_blinks = 0;
 static boolean _statusled_state = 0;
 
+#ifdef NEOPIXEL_FEEDBACK
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Sonar variables
@@ -729,9 +732,11 @@ bool GPS_NMEA_newFrame(char c) {
                       case 9: i2c_dataset.altitude = atoi(string);
                               break;
                      }
+                     #if defined(NEOPIXEL_FEEDBACK)
                      state_r = 0;
                      state_g = 0;
                      state_b = 255;
+                     #endif
                    break;         
                    //************* GPGSA FRAME parsing
                    case GPGSA_FRAME:
@@ -740,6 +745,11 @@ bool GPS_NMEA_newFrame(char c) {
                       case 2: i2c_dataset.status.gps3dfix = string[0] == '3';
                       break;
                      }
+                     #if defined(NEOPIXEL_FEEDBACK)
+                     state_r = 0;
+                     state_g = 0;
+                     state_b = 255;
+                     #endif
                    break;
                    //************* GPGSA FRAME parsing
                    case GPRMC_FRAME:
@@ -750,7 +760,11 @@ bool GPS_NMEA_newFrame(char c) {
 	               case 8: i2c_dataset.ground_course = (atof(string)*10);				//Convert to degrees *10 (.1 precision)
 							   break;
                      }
-                   
+                   #if defined(NEOPIXEL_FEEDBACK)
+                     state_r = 0;
+                     state_g = 0;
+                     state_b = 255;
+                     #endif
                    break;                   
                 }
             
@@ -976,10 +990,20 @@ bool UBLOX_parse_gps(void)
         i2c_dataset.altitude  	        = _buffer.posllh.altitude_msl / 10 /100;      //alt in m
 	i2c_dataset.status.gps3dfix	= next_fix;
 	_new_position = true;
+#if defined(NEOPIXEL_FEEDBACK)
+                     state_r = 0;
+                     state_g = 0;
+                     state_b = 255;
+                     #endif
 	break;
     case MSG_STATUS:
         next_fix	= (_buffer.status.fix_status & NAV_STATUS_FIX_VALID) && (_buffer.status.fix_type == FIX_3D);
 	if (!next_fix) i2c_dataset.status.gps3dfix = false;
+#if defined(NEOPIXEL_FEEDBACK)
+                     state_r = 0;
+                     state_g = 0;
+                     state_b = 255;
+                     #endif
         break;
     case MSG_SOL:
         next_fix	= (_buffer.solution.fix_status & NAV_STATUS_FIX_VALID) && (_buffer.solution.fix_type == FIX_3D);
@@ -987,12 +1011,22 @@ bool UBLOX_parse_gps(void)
         i2c_dataset.status.numsats	= _buffer.solution.satellites;
         //GPS_hdop		= _buffer.solution.position_DOP;
         //debug[3] = GPS_hdop;
+        #if defined(NEOPIXEL_FEEDBACK)
+                     state_r = 0;
+                     state_g = 0;
+                     state_b = 255;
+                     #endif
         break;
     case MSG_VELNED:
         //speed_3d	= _buffer.velned.speed_3d;				// cm/s
         i2c_dataset.ground_speed = _buffer.velned.speed_2d;				// cm/s
         i2c_dataset.ground_course = (uint16_t)(_buffer.velned.heading_2d / 10000);	// Heading 2D deg * 100000 rescaled to deg * 10
 	_new_speed = true;
+#if defined(NEOPIXEL_FEEDBACK)
+                     state_r = 0;
+                     state_g = 0;
+                     state_b = 255;
+                     #endif
         break;
     default:
         return false;
@@ -1225,9 +1259,9 @@ void blink_sonar_update()
       
       _statusled_state = !_statusled_state;
       digitalWrite(13, _statusled_state ? HIGH : LOW);   // set the LED off
-      
+      #if defined(NEOPIXEL_FEEDBACK)                     
       _statusled_state ? setColour(state_r,state_g,state_b) : setColour(0,0,0);
-      
+      #endif
       _statusled_timer = now + 1000;
       return;
     }
@@ -1235,13 +1269,17 @@ void blink_sonar_update()
     if(_statusled_blinks==0) {
       if(i2c_dataset.status.gps3dfix == 1) {
         _statusled_blinks=3;
+        #if defined(NEOPIXEL_FEEDBACK)
         state_r = 0;
         state_g = 255;
         state_b = 0;
+        #endif
       } else if(i2c_dataset.status.gps2dfix == 1) {
+        #if defined(NEOPIXEL_FEEDBACK)
         state_r = 0;
         state_g = 255;
         state_b = 0;
+        #endif
         _statusled_blinks=2;
       } else {
         _statusled_blinks=1;    
@@ -1253,12 +1291,16 @@ void blink_sonar_update()
       _statusled_state = false;
       _statusled_timer = now + ((_statusled_blinks>0) ? BLINK_INTERVAL : 1000);
       digitalWrite(13, LOW);   // set the LED off
+      #if defined(NEOPIXEL_FEEDBACK)
       setColour(0,0,0);
+      #endif
     } else {
       _statusled_state = true;
       _statusled_timer = now + BLINK_INTERVAL;
       digitalWrite(13, HIGH);   // set the LED on
+      #if defined(NEOPIXEL_FEEDBACK)
       setColour(state_r,state_g,state_b);
+      #endif
     }
   }
 }
@@ -1436,12 +1478,13 @@ void Sonar_update()
 // Setup
 //
 void setup() {
+  #if defined(NEOPIXEL_FEEDBACK)
   state_r = 255;
   state_g = 0;
   state_b = 0;
   
   pixels.begin();
-  
+  #endif
   uint8_t i;
 
   //Init Sonar
@@ -1488,6 +1531,7 @@ void setup() {
 
 }
 
+#if defined(NEOPIXEL_FEEDBACK)
 void setColour(int r,int g,int b) {
   for(int i=0;i<NUMPIXELS;i++){
     // pixels.Color takes RGB values, from 0,0,0 up to 255,255,255
@@ -1496,7 +1540,7 @@ void setColour(int r,int g,int b) {
   
   pixels.show(); // This sends the updated pixel color to the hardware.
 }
-
+#endif
 /******************************************************************************************************************/
 /******************************************************* Main loop ************************************************/
 /******************************************************************************************************************/

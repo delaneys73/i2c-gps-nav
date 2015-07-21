@@ -8,6 +8,7 @@
 
 /* Serial speed of the GPS */
 #define GPS_SERIAL_SPEED 9600
+#define NEOPIXEL_FEEDBACK
 
 /* GPS protocol 
  * NMEA			- Standard NMEA protocol GGA, GSA and RMC  sentences are needed
