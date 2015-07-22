@@ -10,6 +10,13 @@
 #define GPS_SERIAL_SPEED 9600
 #define NEOPIXEL_FEEDBACK
 
+// Which pin on the Arduino is connected to the NeoPixels?
+// On a Trinket or Gemma we suggest changing this to 1
+#define NEOPIXEL_PIN            12 // MISO - Easy connect on nav board
+
+// How many NeoPixels are attached to the Arduino?
+#define NEOPIXEL_NUMPIXELS      12 // Probably change to 1 later
+
 /* GPS protocol 
  * NMEA			- Standard NMEA protocol GGA, GSA and RMC  sentences are needed
  * UBLOX		- U-Blox binary protocol, use the ublox config file (u-blox-config.ublox.txt) from the source tree 
@@ -34,12 +41,16 @@
 // Ping/Pong type sonar modules such as HC-SR04, SRF-04, DYP-ME007 and many others...
 // PWM output continous sonars such as the MAXBOTIX series (connect pin2(PWM out) of the sonar to PC2
 
-//#define SONAR						// USE Sonar
+#define SONAR						// USE Sonar
 
 //Sonar type uncomment only one at a time
-//#define PINGPONG
-#define MAXBOTIX_PWM				// PWM output mode sonar
+#define PINGPONG
+//#define MAXBOTIX_PWM				// PWM output mode sonar
 
+#define SONAR_MAX_DISTANCE 500// Maximum ping distance in cm (Dependant on module)
+#define SONAR_US_PER_CM 58 // Microseconds per CM
+#define SONAR_UPDATE_RATE_US 50
+#define SONAR_PULSE_LENGTH_US 10
 
 
 // Default PID variables
